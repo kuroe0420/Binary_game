@@ -6,28 +6,9 @@ import random
 import time
 from dataclasses import dataclass
 
-from tango.generator import generate_puzzle
-from tango.model import Cell, Constraint, Puzzle
+from tango.generator import generate_puzzle_with_filter
+from tango.quality import HintCounts, PuzzleFilter, count_hints
 from tango.solver import count_solutions
-
-
-@dataclass(frozen=True)
-class HintCounts:
-    """Hint counts for a single puzzle."""
-
-    initial_cells: int
-    horizontal_constraints: int
-    vertical_constraints: int
-
-    @property
-    def total_hints(self) -> int:
-        """Return the total number of visible hints."""
-
-        return (
-            self.initial_cells
-            + self.horizontal_constraints
-            + self.vertical_constraints
-        )
 
 
 @dataclass(frozen=True)
@@ -62,6 +43,7 @@ def analyze_generation(
     seed: int | None = None,
     size: int = 6,
     max_attempts: int = 1000,
+    puzzle_filter: PuzzleFilter | None = None,
 ) -> AnalysisResult:
     """Generate puzzles, verify uniqueness, and summarize hint counts."""
 
@@ -76,7 +58,12 @@ def analyze_generation(
 
     for index in range(count):
         try:
-            puzzle = generate_puzzle(size=size, rng=rng, max_attempts=max_attempts)
+            puzzle = generate_puzzle_with_filter(
+                size=size,
+                rng=rng,
+                max_attempts=max_attempts,
+                puzzle_filter=puzzle_filter,
+            )
         except Exception as exc:
             failed += 1
             elapsed_sec = time.perf_counter() - started
@@ -114,34 +101,6 @@ def analyze_generation(
             [counts.vertical_constraints for counts in hint_counts]
         ),
         total_hints=_summarize([counts.total_hints for counts in hint_counts]),
-    )
-
-
-def count_hints(puzzle: Puzzle) -> HintCounts:
-    """Count initial cells and adjacent constraints in a puzzle."""
-
-    initial_cells = sum(
-        1
-        for row in puzzle.initial_board
-        for value in row
-        if Cell(value) != Cell.EMPTY
-    )
-    horizontal_constraints = sum(
-        1
-        for row in puzzle.horizontal_constraints
-        for value in row
-        if Constraint(value) != Constraint.NONE
-    )
-    vertical_constraints = sum(
-        1
-        for row in puzzle.vertical_constraints
-        for value in row
-        if Constraint(value) != Constraint.NONE
-    )
-    return HintCounts(
-        initial_cells=initial_cells,
-        horizontal_constraints=horizontal_constraints,
-        vertical_constraints=vertical_constraints,
     )
 
 

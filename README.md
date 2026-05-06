@@ -59,12 +59,16 @@ codex_tango/
 │ ├ rules.py
 │ ├ solver.py
 │ ├ generator.py
+│ ├ quality.py
+│ ├ analyze.py
 │ ├ json_io.py
 │ └ cli.py
 ├ tests/
 │ ├ test_rules.py
 │ ├ test_solver.py
-│ └ test_generator.py
+│ ├ test_generator.py
+│ ├ test_analyze.py
+│ └ test_cli.py
 ├ generated/
 │ └ .gitkeep
 ├ .gitignore
@@ -75,9 +79,10 @@ codex_tango/
 ## 実行例
 
 ```bash
-python -m tango.cli generate --count 10 --output generated/puzzles.json
+python -m tango.cli generate --count 10 --seed 42 --output generated/puzzles.json --min-initial-cells 3 --min-total-hints 9 --min-constraints 4
+python -m tango.cli show --input generated/puzzles.json --index 0
 python -m tango.cli validate --input generated/puzzles.json --index 0
 python -m tango.cli solve --input generated/puzzles.json --index 0
-python -m tango.cli analyze --count 100 --seed 42
+python -m tango.cli analyze --count 100 --seed 42 --min-initial-cells 3 --min-total-hints 9 --min-constraints 4
 python -m pytest
 ```

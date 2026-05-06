@@ -18,6 +18,7 @@ from tango.model import (
     empty_horizontal_constraints,
     empty_vertical_constraints,
 )
+from tango.quality import PuzzleFilter, puzzle_matches_filter
 from tango.solver import count_solutions
 
 HintKind: TypeAlias = Literal["cell", "horizontal", "vertical"]
@@ -149,13 +150,69 @@ def generate_puzzle(
     raise RuntimeError("Failed to generate a unique puzzle.")
 
 
-def generate_puzzles(count: int, seed: int | None = None) -> list[Puzzle]:
+def generate_puzzles(
+    count: int,
+    seed: int | None = None,
+    size: int = 6,
+    max_attempts: int = 1000,
+    puzzle_filter: PuzzleFilter | None = None,
+) -> list[Puzzle]:
     """Generate multiple puzzles using an optional deterministic seed."""
+
+    return generate_filtered_puzzles(
+        count=count,
+        seed=seed,
+        size=size,
+        max_attempts=max_attempts,
+        puzzle_filter=puzzle_filter,
+    )
+
+
+def generate_filtered_puzzles(
+    count: int,
+    seed: int | None = None,
+    size: int = 6,
+    max_attempts: int = 1000,
+    puzzle_filter: PuzzleFilter | None = None,
+) -> list[Puzzle]:
+    """Generate multiple puzzles that satisfy optional quality thresholds."""
 
     if count < 0:
         raise ValueError("count must not be negative.")
     rng = random.Random(seed)
-    return [generate_puzzle(rng=rng) for _ in range(count)]
+    return [
+        generate_puzzle_with_filter(
+            size=size,
+            rng=rng,
+            max_attempts=max_attempts,
+            puzzle_filter=puzzle_filter,
+        )
+        for _ in range(count)
+    ]
+
+
+def generate_puzzle_with_filter(
+    size: int = 6,
+    rng: random.Random | None = None,
+    max_attempts: int = 1000,
+    puzzle_filter: PuzzleFilter | None = None,
+) -> Puzzle:
+    """Generate one unique puzzle that satisfies optional quality thresholds."""
+
+    if max_attempts <= 0:
+        raise ValueError("max_attempts must be positive.")
+
+    rng = rng or random.Random()
+    puzzle_filter = puzzle_filter or PuzzleFilter()
+    for _ in range(max_attempts):
+        puzzle = generate_puzzle(size=size, rng=rng)
+        if puzzle_matches_filter(puzzle, puzzle_filter):
+            return puzzle
+
+    raise RuntimeError(
+        "Failed to generate a puzzle matching filter after "
+        f"{max_attempts} attempts: {puzzle_filter.describe()}"
+    )
 
 
 @lru_cache(maxsize=None)

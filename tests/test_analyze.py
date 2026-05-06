@@ -34,10 +34,13 @@ def test_analyze_generation_summarizes_generated_puzzles(monkeypatch) -> None:
         vertical_constraints=empty_vertical_constraints(6),
     )
 
-    def fake_generate_puzzle(**kwargs):
+    def fake_generate_puzzle_with_filter(**kwargs):
         return puzzle
 
-    monkeypatch.setattr("tango.analyze.generate_puzzle", fake_generate_puzzle)
+    monkeypatch.setattr(
+        "tango.analyze.generate_puzzle_with_filter",
+        fake_generate_puzzle_with_filter,
+    )
     monkeypatch.setattr("tango.analyze.count_solutions", lambda puzzle, limit=2: 1)
 
     result = analyze_generation(count=3, seed=42)

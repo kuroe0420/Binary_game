@@ -7,12 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from tango.model import Board, ConstraintGrid, Puzzle, clone_board, clone_constraints
+from tango.quality import build_metadata
 
 
-def puzzle_to_dict(puzzle: Puzzle) -> dict[str, Any]:
+def puzzle_to_dict(puzzle: Puzzle, puzzle_id: str | None = None) -> dict[str, Any]:
     """Convert a puzzle to the JSON-compatible dictionary format."""
 
+    output_id = puzzle_id if puzzle_id is not None else puzzle.id
+    if output_id is None:
+        output_id = _default_puzzle_id(1)
     return {
+        "id": output_id,
         "size": puzzle.size,
         "initialBoard": _board_to_ints(puzzle.initial_board),
         "horizontalConstraints": _constraints_to_ints(puzzle.horizontal_constraints),
@@ -20,6 +25,7 @@ def puzzle_to_dict(puzzle: Puzzle) -> dict[str, Any]:
         "solution": None
         if puzzle.solution is None
         else _board_to_ints(puzzle.solution),
+        "metadata": build_metadata(puzzle),
     }
 
 
@@ -34,6 +40,7 @@ def puzzle_from_dict(data: dict[str, Any]) -> Puzzle:
         horizontal_constraints=clone_constraints(data["horizontalConstraints"]),
         vertical_constraints=clone_constraints(data["verticalConstraints"]),
         solution=solution,
+        id=data.get("id"),
     )
 
 
@@ -42,7 +49,12 @@ def save_puzzles(path: str | Path, puzzles: list[Puzzle]) -> None:
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"puzzles": [puzzle_to_dict(puzzle) for puzzle in puzzles]}
+    payload = {
+        "puzzles": [
+            puzzle_to_dict(puzzle, puzzle_id=_default_puzzle_id(index))
+            for index, puzzle in enumerate(puzzles, start=1)
+        ]
+    }
     output_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -65,3 +77,7 @@ def _board_to_ints(board: Board) -> list[list[int]]:
 
 def _constraints_to_ints(grid: ConstraintGrid) -> list[list[int]]:
     return [[int(value) for value in row] for row in grid]
+
+
+def _default_puzzle_id(index: int) -> str:
+    return f"duo_{index:04d}"

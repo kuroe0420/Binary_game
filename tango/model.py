@@ -44,6 +44,7 @@ class Puzzle:
     horizontal_constraints: ConstraintGrid
     vertical_constraints: ConstraintGrid
     solution: Board | None = None
+    id: str | None = None
 
 
 def empty_board(size: int) -> Board:

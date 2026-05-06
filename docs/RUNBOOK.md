@@ -36,10 +36,11 @@ python -m pip install -r requirements-dev.txt
 ## 4. 実装後の確認コマンド
 
 ```powershell
-python -m tango.cli generate --count 5 --seed 42 --output generated/puzzles.json
+python -m tango.cli generate --count 5 --seed 42 --output generated/puzzles.json --min-initial-cells 3 --min-total-hints 9 --min-constraints 4
+python -m tango.cli show --input generated/puzzles.json --index 0
 python -m tango.cli validate --input generated/puzzles.json --index 0
 python -m tango.cli solve --input generated/puzzles.json --index 0
-python -m tango.cli analyze --count 100 --seed 42
+python -m tango.cli analyze --count 100 --seed 42 --min-initial-cells 3 --min-total-hints 9 --min-constraints 4
 python -m pytest
 ```
 
@@ -50,6 +51,8 @@ python -m pytest
 ```text
 - generated/puzzles.json が生成される
 - 各問題が count_solutions == 1 になる
+- JSON に id と metadata が出力される
+- show で問題 ID、盤面、解、ヒント数、解数が表示される
 - validate でエラーが出ない
 - solve で解が表示される
 - analyze で failed: 0 かつ unique が generated と一致する
