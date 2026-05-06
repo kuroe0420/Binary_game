@@ -1,0 +1,10 @@
+[project]
+name = "codex-tango"
+version = "0.1.0"
+description = "Python prototype for a Tango-style binary logic puzzle."
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
