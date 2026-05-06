@@ -20,6 +20,18 @@ Tango系の二値ロジックパズルを、Androidアプリへ移植する前�
 - 標準ライブラリ中心
 - テストは pytest 推奨
 
+## ローカル環境
+
+パッケージはプロジェクト直下の `.venv` で管理します。Cドライブ容量を圧迫しないように、pip キャッシュも必要に応じて `.pip-cache` に逃がします。
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+$env:PIP_CACHE_DIR = Join-Path (Get-Location) ".pip-cache"
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ## ドキュメント
 
 初期依頼文や詳細仕様は `docs/` にまとめています。
@@ -28,6 +40,7 @@ Tango系の二値ロジックパズルを、Androidアプリへ移植する前�
 - `docs/SPEC_TANGO_PROTOTYPE.md`
 - `docs/RUNBOOK.md`
 - `docs/FOLLOWUP_PROMPT_AFTER_IMPLEMENTATION.md`
+- `docs/HANDOFF.md`
 
 ## 想定する最終構成
 
@@ -38,7 +51,8 @@ codex_tango/
 │ ├ CODEX_PROMPT.md
 │ ├ SPEC_TANGO_PROTOTYPE.md
 │ ├ RUNBOOK.md
-│ └ FOLLOWUP_PROMPT_AFTER_IMPLEMENTATION.md
+│ ├ FOLLOWUP_PROMPT_AFTER_IMPLEMENTATION.md
+│ └ HANDOFF.md
 ├ tango/
 │ ├ __init__.py
 │ ├ model.py
@@ -54,6 +68,7 @@ codex_tango/
 ├ generated/
 │ └ .gitkeep
 ├ .gitignore
+├ requirements-dev.txt
 └ pyproject.toml
 ```
 
@@ -63,5 +78,6 @@ codex_tango/
 python -m tango.cli generate --count 10 --output generated/puzzles.json
 python -m tango.cli validate --input generated/puzzles.json --index 0
 python -m tango.cli solve --input generated/puzzles.json --index 0
-pytest
+python -m tango.cli analyze --count 100 --seed 42
+python -m pytest
 ```

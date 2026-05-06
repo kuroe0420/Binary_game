@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from tango.analyze import AnalysisError, analyze_generation, format_analysis_result
 from tango.generator import generate_puzzles
 from tango.json_io import load_puzzles, save_puzzles
 from tango.model import Board, Cell, Constraint, Puzzle
@@ -45,6 +46,12 @@ def main(argv: list[str] | None = None) -> int:
     validate_parser.add_argument("--input", type=Path, required=True)
     validate_parser.add_argument("--index", type=int, default=0)
 
+    analyze_parser = subparsers.add_parser(
+        "analyze", help="Generate puzzles and summarize generation quality."
+    )
+    analyze_parser.add_argument("--count", type=int, required=True)
+    analyze_parser.add_argument("--seed", type=int)
+
     args = parser.parse_args(argv)
     if args.command == "generate":
         return _cmd_generate(args.count, args.seed, args.output)
@@ -52,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_solve(args.input, args.index)
     if args.command == "validate":
         return _cmd_validate(args.input, args.index)
+    if args.command == "analyze":
+        return _cmd_analyze(args.count, args.seed)
     return 2
 
 
@@ -141,6 +150,16 @@ def _cmd_validate(input_path: Path, index: int) -> int:
     if solution_count != 1:
         ok = False
     return 0 if ok else 1
+
+
+def _cmd_analyze(count: int, seed: int | None) -> int:
+    try:
+        result = analyze_generation(count=count, seed=seed)
+    except (AnalysisError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    print(format_analysis_result(result))
+    return 0
 
 
 def _load_one(input_path: Path, index: int) -> Puzzle:

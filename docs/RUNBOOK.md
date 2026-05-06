@@ -21,16 +21,29 @@ docs/CODEX_PROMPT.md と docs/SPEC_TANGO_PROTOTYPE.md を読んで、仕様通�
 実装後、pytest と CLI の動作確認まで行ってください。
 ```
 
-## 3. 実装後の確認コマンド
+## 3. ローカル仮想環境
+
+プロジェクト直下に `.venv` を作成し、依存パッケージはそこへ入れる。
+Cドライブ容量対策として、pip キャッシュは `.pip-cache` に向ける。
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+$env:PIP_CACHE_DIR = Join-Path (Get-Location) ".pip-cache"
+python -m pip install -r requirements-dev.txt
+```
+
+## 4. 実装後の確認コマンド
 
 ```powershell
 python -m tango.cli generate --count 5 --seed 42 --output generated/puzzles.json
 python -m tango.cli validate --input generated/puzzles.json --index 0
 python -m tango.cli solve --input generated/puzzles.json --index 0
-pytest
+python -m tango.cli analyze --count 100 --seed 42
+python -m pytest
 ```
 
-## 4. 確認観点
+## 5. 確認観点
 
 最低限、以下を確認する。
 
@@ -39,10 +52,11 @@ pytest
 - 各問題が count_solutions == 1 になる
 - validate でエラーが出ない
 - solve で解が表示される
+- analyze で failed: 0 かつ unique が generated と一致する
 - pytest が成功する
 ```
 
-## 5. Android移植前に見るべき点
+## 6. Android移植前に見るべき点
 
 ```text
 - JSON形式がKotlinで読み込みやすいか
@@ -52,7 +66,7 @@ pytest
 - 100問程度を安定生成できるか
 ```
 
-## 6. 次フェーズ
+## 7. 次フェーズ
 
 Pythonで十分に検証できたら、次は以下に進む。
 
