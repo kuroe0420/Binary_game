@@ -54,6 +54,29 @@ def test_save_puzzles_adds_id_and_metadata(tmp_path) -> None:
     assert saved["metadata"]["generatorVersion"] == "0.1.0"
 
 
+def test_save_puzzles_keeps_existing_id_and_assigns_missing_ids(tmp_path) -> None:
+    first = Puzzle(
+        size=6,
+        initial_board=empty_board(6),
+        horizontal_constraints=empty_horizontal_constraints(6),
+        vertical_constraints=empty_vertical_constraints(6),
+        id="custom_abc",
+    )
+    second = Puzzle(
+        size=6,
+        initial_board=empty_board(6),
+        horizontal_constraints=empty_horizontal_constraints(6),
+        vertical_constraints=empty_vertical_constraints(6),
+    )
+    path = tmp_path / "puzzles.json"
+
+    save_puzzles(path, [first, second])
+    data = json.loads(path.read_text(encoding="utf-8"))
+
+    assert data["puzzles"][0]["id"] == "custom_abc"
+    assert data["puzzles"][1]["id"] == "duo_0002"
+
+
 def test_load_puzzles_accepts_old_format_without_id_or_metadata(tmp_path) -> None:
     path = tmp_path / "old_puzzle.json"
     path.write_text(

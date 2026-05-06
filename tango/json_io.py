@@ -13,7 +13,7 @@ from tango.quality import build_metadata
 def puzzle_to_dict(puzzle: Puzzle, puzzle_id: str | None = None) -> dict[str, Any]:
     """Convert a puzzle to the JSON-compatible dictionary format."""
 
-    output_id = puzzle_id if puzzle_id is not None else puzzle.id
+    output_id = puzzle.id if puzzle.id is not None else puzzle_id
     if output_id is None:
         output_id = _default_puzzle_id(1)
     return {

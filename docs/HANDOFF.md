@@ -12,7 +12,7 @@
 ## 今回の更新
 
 - JSON 出力に `id` と `metadata` を追加した。
-- `save_puzzles()` は `duo_0001`, `duo_0002` ... の ID を自動付与する。
+- `save_puzzles()` は `Puzzle.id` がある場合は維持し、未設定の場合だけ `duo_0001`, `duo_0002` ... の ID を自動付与する。
 - `metadata` は保存時にヒント数から自動計算する。
 - `load_puzzles()` は旧形式 JSON も読み込める後方互換を維持している。
 - CLI に `show` コマンドを追加した。
