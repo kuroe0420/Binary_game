@@ -10,7 +10,11 @@ from tango.model import Board, ConstraintGrid, Puzzle, clone_board, clone_constr
 from tango.quality import build_metadata
 
 
-def puzzle_to_dict(puzzle: Puzzle, puzzle_id: str | None = None) -> dict[str, Any]:
+def puzzle_to_dict(
+    puzzle: Puzzle,
+    puzzle_id: str | None = None,
+    difficulty: str | None = None,
+) -> dict[str, Any]:
     """Convert a puzzle to the JSON-compatible dictionary format."""
 
     output_id = puzzle.id if puzzle.id is not None else puzzle_id
@@ -25,7 +29,7 @@ def puzzle_to_dict(puzzle: Puzzle, puzzle_id: str | None = None) -> dict[str, An
         "solution": None
         if puzzle.solution is None
         else _board_to_ints(puzzle.solution),
-        "metadata": build_metadata(puzzle),
+        "metadata": build_metadata(puzzle, difficulty=difficulty),
     }
 
 
@@ -41,17 +45,26 @@ def puzzle_from_dict(data: dict[str, Any]) -> Puzzle:
         vertical_constraints=clone_constraints(data["verticalConstraints"]),
         solution=solution,
         id=data.get("id"),
+        metadata=dict(data.get("metadata") or {}),
     )
 
 
-def save_puzzles(path: str | Path, puzzles: list[Puzzle]) -> None:
+def save_puzzles(
+    path: str | Path,
+    puzzles: list[Puzzle],
+    difficulty: str | None = None,
+) -> None:
     """Save puzzles to a JSON file."""
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "puzzles": [
-            puzzle_to_dict(puzzle, puzzle_id=_default_puzzle_id(index))
+            puzzle_to_dict(
+                puzzle,
+                puzzle_id=_default_puzzle_id(index),
+                difficulty=difficulty,
+            )
             for index, puzzle in enumerate(puzzles, start=1)
         ]
     }

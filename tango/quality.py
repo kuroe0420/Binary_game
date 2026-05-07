@@ -7,7 +7,7 @@ from typing import Any
 
 from tango.model import Cell, Constraint, Puzzle
 
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 
 
 @dataclass(frozen=True)
@@ -89,15 +89,19 @@ def count_hints(puzzle: Puzzle) -> HintCounts:
     )
 
 
-def build_metadata(puzzle: Puzzle) -> dict[str, Any]:
+def build_metadata(puzzle: Puzzle, difficulty: str | None = None) -> dict[str, Any]:
     """Build JSON metadata for a puzzle from its current hints."""
 
     counts = count_hints(puzzle)
+    metadata_difficulty = difficulty
+    if metadata_difficulty is None:
+        metadata_difficulty = puzzle.metadata.get("difficulty", "custom")
     return {
         "initialCellCount": counts.initial_cells,
         "horizontalConstraintCount": counts.horizontal_constraints,
         "verticalConstraintCount": counts.vertical_constraints,
         "totalHintCount": counts.total_hints,
+        "difficulty": metadata_difficulty,
         "generatorVersion": GENERATOR_VERSION,
     }
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
 from enum import IntEnum
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 
 class Cell(IntEnum):
@@ -45,6 +46,7 @@ class Puzzle:
     vertical_constraints: ConstraintGrid
     solution: Board | None = None
     id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def empty_board(size: int) -> Board:

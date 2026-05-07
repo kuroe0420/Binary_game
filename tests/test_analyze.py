@@ -51,3 +51,26 @@ def test_analyze_generation_summarizes_generated_puzzles(monkeypatch) -> None:
     assert result.failed == 0
     assert "generated: 3" in output
     assert "total_hints min/avg/max: 0/0.00/0" in output
+
+
+def test_format_analysis_result_includes_difficulty_when_provided(monkeypatch) -> None:
+    puzzle = Puzzle(
+        size=6,
+        initial_board=empty_board(6),
+        horizontal_constraints=empty_horizontal_constraints(6),
+        vertical_constraints=empty_vertical_constraints(6),
+    )
+
+    def fake_generate_puzzle_with_filter(**kwargs):
+        return puzzle
+
+    monkeypatch.setattr(
+        "tango.analyze.generate_puzzle_with_filter",
+        fake_generate_puzzle_with_filter,
+    )
+    monkeypatch.setattr("tango.analyze.count_solutions", lambda puzzle, limit=2: 1)
+
+    result = analyze_generation(count=1, seed=42)
+    output = format_analysis_result(result, difficulty="easy")
+
+    assert output.splitlines()[0] == "difficulty: easy"

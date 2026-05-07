@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 import time
 from dataclasses import dataclass
+from typing import Callable
 
 from tango.generator import generate_puzzle_with_filter
 from tango.quality import HintCounts, PuzzleFilter, count_hints
@@ -44,6 +45,7 @@ def analyze_generation(
     size: int = 6,
     max_attempts: int = 1000,
     puzzle_filter: PuzzleFilter | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> AnalysisResult:
     """Generate puzzles, verify uniqueness, and summarize hint counts."""
 
@@ -86,6 +88,8 @@ def analyze_generation(
 
         unique += 1
         hint_counts.append(count_hints(puzzle))
+        if progress_callback is not None:
+            progress_callback(index + 1, count)
 
     elapsed_sec = time.perf_counter() - started
     return AnalysisResult(
@@ -104,10 +108,16 @@ def analyze_generation(
     )
 
 
-def format_analysis_result(result: AnalysisResult) -> str:
+def format_analysis_result(
+    result: AnalysisResult,
+    difficulty: str | None = None,
+) -> str:
     """Format an analysis result for CLI output."""
 
-    return "\n".join(
+    lines = []
+    if difficulty is not None:
+        lines.append(f"difficulty: {difficulty}")
+    lines.extend(
         [
             f"generated: {result.generated}",
             f"unique: {result.unique}",
@@ -121,6 +131,7 @@ def format_analysis_result(result: AnalysisResult) -> str:
             f"total_hints min/avg/max: {_format_metric(result.total_hints)}",
         ]
     )
+    return "\n".join(lines)
 
 
 def _summarize(values: list[int]) -> MetricSummary:

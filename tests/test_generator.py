@@ -1,8 +1,10 @@
 import json
+import random
 
 from tango.generator import generate_puzzle, generate_puzzle_with_filter, generate_solution
+from tango.generator import _apply_hint, _minimize_hints
 from tango.json_io import load_puzzles, save_puzzles
-from tango.model import Puzzle, empty_board, empty_horizontal_constraints, empty_vertical_constraints
+from tango.model import Cell, Puzzle, empty_board, empty_horizontal_constraints, empty_vertical_constraints
 from tango.quality import PuzzleFilter, count_hints
 from tango.rules import is_complete
 from tango.solver import count_solutions
@@ -30,11 +32,12 @@ def test_json_roundtrip_keeps_unique_solution(tmp_path) -> None:
     puzzle = generate_puzzle()
     path = tmp_path / "puzzles.json"
 
-    save_puzzles(path, [puzzle])
+    save_puzzles(path, [puzzle], difficulty="easy")
     loaded = load_puzzles(path)
 
     assert len(loaded) == 1
     assert count_solutions(loaded[0], limit=2) == 1
+    assert loaded[0].metadata["difficulty"] == "easy"
 
 
 def test_save_puzzles_adds_id_and_metadata(tmp_path) -> None:
@@ -42,7 +45,7 @@ def test_save_puzzles_adds_id_and_metadata(tmp_path) -> None:
     counts = count_hints(puzzle)
     path = tmp_path / "puzzles.json"
 
-    save_puzzles(path, [puzzle])
+    save_puzzles(path, [puzzle], difficulty="easy")
     data = json.loads(path.read_text(encoding="utf-8"))
     saved = data["puzzles"][0]
 
@@ -51,7 +54,8 @@ def test_save_puzzles_adds_id_and_metadata(tmp_path) -> None:
     assert saved["metadata"]["horizontalConstraintCount"] == counts.horizontal_constraints
     assert saved["metadata"]["verticalConstraintCount"] == counts.vertical_constraints
     assert saved["metadata"]["totalHintCount"] == counts.total_hints
-    assert saved["metadata"]["generatorVersion"] == "0.1.0"
+    assert saved["metadata"]["difficulty"] == "easy"
+    assert saved["metadata"]["generatorVersion"] == "0.2.0"
 
 
 def test_save_puzzles_keeps_existing_id_and_assigns_missing_ids(tmp_path) -> None:
@@ -96,6 +100,41 @@ def test_load_puzzles_accepts_old_format_without_id_or_metadata(tmp_path) -> Non
 
     assert len(loaded) == 1
     assert loaded[0].id is None
+    assert loaded[0].metadata == {}
+
+
+def test_load_puzzles_accepts_old_format_without_difficulty(tmp_path) -> None:
+    path = tmp_path / "old_puzzles.json"
+    path.write_text(
+        json.dumps(
+            {
+                "puzzles": [
+                    {
+                        "id": "duo_old",
+                        "size": 6,
+                        "initialBoard": [[-1 for _ in range(6)] for _ in range(6)],
+                        "horizontalConstraints": [[0 for _ in range(5)] for _ in range(6)],
+                        "verticalConstraints": [[0 for _ in range(6)] for _ in range(5)],
+                        "solution": [],
+                        "metadata": {
+                            "initialCellCount": 0,
+                            "horizontalConstraintCount": 0,
+                            "verticalConstraintCount": 0,
+                            "totalHintCount": 0,
+                            "generatorVersion": "0.1.0",
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_puzzles(path)
+
+    assert len(loaded) == 1
+    assert loaded[0].metadata["generatorVersion"] == "0.1.0"
+    assert "difficulty" not in loaded[0].metadata
 
 
 def test_generate_puzzle_with_filter_rejects_impossible_filter() -> None:
@@ -107,3 +146,53 @@ def test_generate_puzzle_with_filter_rejects_impossible_filter() -> None:
         assert "matching filter" in str(exc)
     else:
         raise AssertionError("Expected RuntimeError for impossible filter.")
+
+
+def test_minimize_hints_keeps_filter_thresholds() -> None:
+    solution = [
+        [Cell.A, Cell.B, Cell.A, Cell.B, Cell.A, Cell.B],
+        [Cell.B, Cell.A, Cell.B, Cell.A, Cell.B, Cell.A],
+        [Cell.B, Cell.A, Cell.A, Cell.B, Cell.A, Cell.B],
+        [Cell.A, Cell.B, Cell.B, Cell.A, Cell.B, Cell.A],
+        [Cell.B, Cell.A, Cell.B, Cell.A, Cell.A, Cell.B],
+        [Cell.A, Cell.B, Cell.A, Cell.B, Cell.B, Cell.A],
+    ]
+    initial_board = empty_board(6)
+    horizontal = empty_horizontal_constraints(6)
+    vertical = empty_vertical_constraints(6)
+    hints = [
+        ("cell", 0, 0),
+        ("cell", 0, 1),
+        ("horizontal", 0, 0),
+        ("vertical", 0, 0),
+    ]
+    for hint in hints:
+        _apply_hint(hint, solution, initial_board, horizontal, vertical)
+    puzzle_filter = PuzzleFilter(
+        min_initial_cells=2,
+        min_total_hints=4,
+        min_constraints=2,
+    )
+
+    _minimize_hints(
+        6,
+        solution,
+        initial_board,
+        horizontal,
+        vertical,
+        hints,
+        random.Random(42),
+        puzzle_filter=puzzle_filter,
+    )
+    puzzle = Puzzle(
+        size=6,
+        initial_board=initial_board,
+        horizontal_constraints=horizontal,
+        vertical_constraints=vertical,
+        solution=solution,
+    )
+    counts = count_hints(puzzle)
+
+    assert counts.initial_cells == 2
+    assert counts.total_hints == 4
+    assert counts.total_constraints == 2

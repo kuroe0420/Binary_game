@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from functools import lru_cache
 from itertools import product
-from typing import Literal, TypeAlias
+from typing import Callable, Literal, TypeAlias
 
 from tango.model import (
     Board,
@@ -94,6 +94,7 @@ def generate_puzzle(
     size: int = 6,
     rng: random.Random | None = None,
     max_attempts: int = 1000,
+    puzzle_filter: PuzzleFilter | None = None,
 ) -> Puzzle:
     """Generate a puzzle with exactly one solution."""
 
@@ -110,6 +111,7 @@ def generate_puzzle(
         rng.shuffle(hints)
 
         active_hints: list[Hint] = []
+        is_unique = False
         for hint in hints:
             _apply_hint(
                 hint,
@@ -126,7 +128,9 @@ def generate_puzzle(
                 vertical_constraints,
                 solution,
             )
-            if count_solutions(puzzle, limit=2) == 1:
+            if not is_unique:
+                is_unique = count_solutions(puzzle, limit=2) == 1
+            if is_unique and _puzzle_is_ready_for_minimization(puzzle, puzzle_filter):
                 _minimize_hints(
                     size,
                     solution,
@@ -135,6 +139,7 @@ def generate_puzzle(
                     vertical_constraints,
                     active_hints,
                     rng,
+                    puzzle_filter=puzzle_filter,
                 )
                 final_puzzle = _make_puzzle(
                     size,
@@ -143,11 +148,19 @@ def generate_puzzle(
                     vertical_constraints,
                     solution,
                 )
-                if count_solutions(final_puzzle, limit=2) == 1:
+                if count_solutions(final_puzzle, limit=2) == 1 and puzzle_matches_filter(
+                    final_puzzle,
+                    puzzle_filter,
+                ):
                     return final_puzzle
                 break
 
-    raise RuntimeError("Failed to generate a unique puzzle.")
+    if puzzle_filter is None:
+        raise RuntimeError("Failed to generate a unique puzzle.")
+    raise RuntimeError(
+        "Failed to generate a unique puzzle matching filter after "
+        f"{max_attempts} attempts: {puzzle_filter.describe()}"
+    )
 
 
 def generate_puzzles(
@@ -156,6 +169,7 @@ def generate_puzzles(
     size: int = 6,
     max_attempts: int = 1000,
     puzzle_filter: PuzzleFilter | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> list[Puzzle]:
     """Generate multiple puzzles using an optional deterministic seed."""
 
@@ -165,6 +179,7 @@ def generate_puzzles(
         size=size,
         max_attempts=max_attempts,
         puzzle_filter=puzzle_filter,
+        progress_callback=progress_callback,
     )
 
 
@@ -174,21 +189,26 @@ def generate_filtered_puzzles(
     size: int = 6,
     max_attempts: int = 1000,
     puzzle_filter: PuzzleFilter | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> list[Puzzle]:
     """Generate multiple puzzles that satisfy optional quality thresholds."""
 
     if count < 0:
         raise ValueError("count must not be negative.")
     rng = random.Random(seed)
-    return [
-        generate_puzzle_with_filter(
-            size=size,
-            rng=rng,
-            max_attempts=max_attempts,
-            puzzle_filter=puzzle_filter,
+    puzzles: list[Puzzle] = []
+    for index in range(count):
+        puzzles.append(
+            generate_puzzle_with_filter(
+                size=size,
+                rng=rng,
+                max_attempts=max_attempts,
+                puzzle_filter=puzzle_filter,
+            )
         )
-        for _ in range(count)
-    ]
+        if progress_callback is not None:
+            progress_callback(index + 1, count)
+    return puzzles
 
 
 def generate_puzzle_with_filter(
@@ -203,15 +223,11 @@ def generate_puzzle_with_filter(
         raise ValueError("max_attempts must be positive.")
 
     rng = rng or random.Random()
-    puzzle_filter = puzzle_filter or PuzzleFilter()
-    for _ in range(max_attempts):
-        puzzle = generate_puzzle(size=size, rng=rng)
-        if puzzle_matches_filter(puzzle, puzzle_filter):
-            return puzzle
-
-    raise RuntimeError(
-        "Failed to generate a puzzle matching filter after "
-        f"{max_attempts} attempts: {puzzle_filter.describe()}"
+    return generate_puzzle(
+        size=size,
+        rng=rng,
+        max_attempts=max_attempts,
+        puzzle_filter=puzzle_filter,
     )
 
 
@@ -285,6 +301,7 @@ def _minimize_hints(
     vertical_constraints: list[list[Constraint]],
     active_hints: list[Hint],
     rng: random.Random,
+    puzzle_filter: PuzzleFilter | None = None,
 ) -> None:
     candidates = active_hints[:]
     rng.shuffle(candidates)
@@ -297,6 +314,15 @@ def _minimize_hints(
             vertical_constraints,
             solution,
         )
+        if not puzzle_matches_filter(trial, puzzle_filter):
+            _apply_hint(
+                hint,
+                solution,
+                initial_board,
+                horizontal_constraints,
+                vertical_constraints,
+            )
+            continue
         if count_solutions(trial, limit=2) == 1:
             active_hints.remove(hint)
         else:
@@ -307,6 +333,15 @@ def _minimize_hints(
                 horizontal_constraints,
                 vertical_constraints,
             )
+
+
+def _puzzle_is_ready_for_minimization(
+    puzzle: Puzzle,
+    puzzle_filter: PuzzleFilter | None,
+) -> bool:
+    if puzzle_filter is None:
+        return True
+    return puzzle_matches_filter(puzzle, puzzle_filter)
 
 
 def _constraint_for(first: Cell, second: Cell) -> Constraint:
